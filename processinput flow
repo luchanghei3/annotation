@@ -7,6 +7,19 @@ done
 
 sort cancer.vcf | uniq > sorted_cancer.vcf
 
+######################################################################################################
+step 1 
+ awk 'NR>1 {print $11}' 1B.vcf > vcf.hgvs
+
+step 2
+ for f in *_unique_sites.tsv; do
+    cancer=$(basename "$f" _unique_sites.tsv)
+    awk -F'\t' -v c="$cancer" '
+    NR==FNR {a[$1]; next}
+    ($23 in a) {print $23 "\t" c}
+    ' vcf.hgvs "$f"
+done > variant_cancer_map.tsv
+
 ###################################################################################################################
 
 1. 映射文件：

@@ -1,0 +1,99 @@
+# Iterate through each line of variant_cancer_map_cn.tsv (excluding header), extract the mutation description (col1), 
+# and use it to grep the corresponding line in 1B.vcf file.
+
+awk '{print $1}' variant_cancer_map_cn.tsv | while read mutation; do
+    grep -F "$mutation" 1B.vcf
+done
+
+sort cancer.vcf | uniq > sorted_cancer.vcf
+
+###################################################################################################################
+
+1. 映射文件：
+nano cancer_map.tsv
+biliary_tract_carcinoma	胆道癌
+bone_Ewing_sarcoma-peripheral_primitive_neuroectodermal_tumour	骨尤因瘤/外周原始神经外胚层肿瘤
+breast_carcinoma	乳腺癌
+cervix_carcinoma	宫颈癌
+endometrium_carcinoma	子宫内膜癌
+haematopoietic_and_lymphoid_tissue_haematopoietic_neoplasm	造血系统肿瘤
+haematopoietic_and_lymphoid_tissue_lymphoid_neoplasm	淋巴组织肿瘤
+kidney	肾癌
+large_intestine_carcinoma	大肠癌
+liver	肝癌
+lung_carcinoma	肺癌
+oesophagus_carcinoma	食管癌
+ovary_carcinoma	卵巢癌
+pancreas_carcinoma	胰腺癌
+prostate_carcinoma	前列腺癌
+skin	皮肤癌
+stomach_carcinoma	胃癌
+thyroid_carcinoma	甲状腺癌
+upper_aerodigestive_tract_carcinoma	上呼吸消化道癌
+urinary_tract_carcinoma	尿路癌
+
+
+2. 转换结果文件：
+variant_cancer_map.tsv
+
+awk -F'\t' 'NR==FNR {a[$1]=$2; next} {print $1 "\t" a[$2]}' cancer_map.tsv variant_cancer_map.tsv > variant_cancer_map_cn.tsv
+#################################################################################################################################################
+
+1. 根据hgvs捞取 Gene    Mutation type   Amino Acid Change       Cancer typeGenome AD：1， 12,  11
+
+for f in *_unique_sites.tsv; do
+    cancer=$(basename "$f" _unique_sites.tsv)
+    awk -F'\t' -v c="$cancer" '
+    NR==FNR {a[$1]; next}
+    ($23 in a) {print $0 "\t" c}
+    ' vcf.hgvs "$f"
+done > variant_cancer_map.allcol.tsv
+#######################################################################
+
+awk -F'\t' '{
+    key = $23"\t"$1"\t"$12
+    if (!(key in seen)) {
+        seen[key] = $11
+    } else {
+        if (seen[key] !~ "(^|,)"$11"(,|$)") {
+            seen[key] = seen[key] "," $11
+        }
+    }
+}
+END {
+    for (k in seen) {
+        print k "\t" seen[k]
+    }
+}' variant_cancer_map.allcol.tsv | sort > variant_cancer_map.infocol.tsv
+
+
+liuluchang@c1:~/processinput$ head variant_cancer_map.infocol.tsv
+10:g.121520021A>T       FGFR2   missense_variant        p.S71R,p.S210R,p.S299R,p.S184R
+10:g.43106392C>T        RET     missense_variant        p.T295M
+10:g.95067333C>T        CYP2C8  missense_variant        p.R49K,p.R119K,p.R17K,p.R33K
+11:g.108253990G>A       ATM     missense_variant        p.R692H
+11:g.108365151C>T       ATM     missense_variant        p.P2974S
+11:g.111358904G>A       POU2AF1 stop_gained     p.Q11*
+11:g.128911905G>A       KCNJ5   missense_variant        p.R211Q
+11:g.32428592G>A        WT1     missense_variant        p.T225M,p.T13M
+11:g.64804780C>T        MEN1    missense_variant        p.E463K,p.E468K,p.E408K,p.E428K
+11:g.65661805G>A        RELA    missense_variant        p.R73C
+
+
+33333333333333333333333333333333333333333333333333333333333333333333333333333333333
+
+
+liuluchang@c1:~/processinput$ awk 'NR==FNR {a[$1]; next} ($1 in a)' vcf.hgvs ../cosmic_by_chr/* > matched_cosmiccontrol.tsv
+liuluchang@c1:~/processinput$ head matched_cosmiccontrol.tsv
+10:g.43106392C>T        chr10:g.43106392C>T     21      1459446 1.4389022e-05
+10:g.95067333C>T        chr10:g.95067333C>T     1       1461858 6.8406097e-07
+11:g.32428592G>A        chr11:g.32428592G>A     53      1461558 3.6262673e-05
+11:g.64804780C>T        chr11:g.64804780C>T     2       1444782 1.3842919e-06
+11:g.65661805G>A        chr11:g.65661805G>A     3       1461270 2.0530087e-06
+11:g.69651233A>T        chr11:g.69651233A>T     1       1442898 6.9304968e-07
+11:g.108253990G>A       chr11:g.108253990G>A    5       1461688 3.4207026e-06
+
+
+#######################################################################################
+annotate_new.awk
+awk -f annotate_cancer.awk variant_cancer_map.infocol.tsv matched_cosmiccontrol.tsv variant_cancer_map_cn.tsv sorted_cancer.af.new.vcf > sorted_cancer.af.annotated.vcf

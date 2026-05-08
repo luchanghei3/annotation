@@ -1,1 +1,9 @@
+perl table_annovar.pl 1B.avinput humandb/ \
+-buildver hg38 \
+-out 1B.annoted \
+-remove \
+-protocol refGeneWithVer,clinvar_20220320,gnomad211_genome \
+-operation g,f,f \
+-nastring . \
+-vcfinput
 

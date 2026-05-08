@@ -7,3 +7,14 @@ perl table_annovar.pl 1B.avinput humandb/ \
 -nastring . \
 -vcfinput
 
+
+cd ~/annotate/annovar
+
+perl table_annovar.pl 1B.avinput humandb/ \
+-buildver hg38 \
+-out 1B.annoted \
+-remove \
+-protocol refGeneWithVer,clinvar_20220320,gnomad211_genome,gnomad41_exome \
+-operation g,f,f,f \
+-nastring . \
+-vcfinput
